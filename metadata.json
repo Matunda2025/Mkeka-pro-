@@ -1,0 +1,5 @@
+{
+  "name": "Gemzon Tipster App",
+  "description": "A sports tipster application interface, designed to replicate the provided UI. Users can browse and see top tipsters for betting advice in a sleek, dark-themed mobile layout.",
+  "requestFramePermissions": []
+}
