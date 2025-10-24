@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
 import { 
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword,
+    sendPasswordResetEmail,
     AuthError
 } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+
 
 const ShieldIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-[#20C56A]" viewBox="0 0 24 24" fill="currentColor">
@@ -40,15 +43,27 @@ const LoginPage: React.FC = () => {
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+    const clearMessages = () => {
+        setError(null);
+        setSuccessMessage(null);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        setError(null);
+        clearMessages();
 
         try {
             if (isSignUp) {
-                await createUserWithEmailAndPassword(auth, email, password);
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                // Add user info to Firestore for tracking
+                await setDoc(doc(db, "users", userCredential.user.uid), {
+                    email: userCredential.user.email,
+                    createdAt: serverTimestamp(),
+                    uid: userCredential.user.uid,
+                });
             } else {
                 await signInWithEmailAndPassword(auth, email, password);
             }
@@ -60,6 +75,26 @@ const LoginPage: React.FC = () => {
             setIsLoading(false);
         }
     };
+
+    const handleForgotPassword = async () => {
+        if (!email) {
+            clearMessages();
+            setError("Please enter your email to reset the password.");
+            return;
+        }
+        setIsLoading(true);
+        clearMessages();
+        try {
+            await sendPasswordResetEmail(auth, email);
+            setSuccessMessage("Password reset email sent. Please check your inbox!");
+        } catch (err) {
+            const authError = err as AuthError;
+            setError(getFriendlyErrorMessage(authError.code));
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
 
     return (
         <div className="bg-[#121212] min-h-screen font-sans text-white flex flex-col justify-center items-center p-4">
@@ -97,9 +132,23 @@ const LoginPage: React.FC = () => {
                             placeholder="••••••••"
                             required
                         />
+                         {!isSignUp && (
+                            <div className="text-right mt-2">
+                                <button 
+                                    type="button" 
+                                    onClick={handleForgotPassword} 
+                                    className="text-sm font-semibold text-gray-400 hover:text-[#20C56A] transition-colors disabled:opacity-50"
+                                    disabled={isLoading}
+                                >
+                                    Forgot Password?
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+                    {successMessage && <p className="text-green-400 text-sm text-center">{successMessage}</p>}
+
 
                     <button
                         type="submit"
@@ -111,7 +160,7 @@ const LoginPage: React.FC = () => {
                     
                     <p className="text-sm text-center text-gray-400">
                         {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-                        <button type="button" onClick={() => { setIsSignUp(!isSignUp); setError(null); }} className="font-semibold text-[#20C56A] hover:underline ml-1">
+                        <button type="button" onClick={() => { setIsSignUp(!isSignUp); clearMessages(); }} className="font-semibold text-[#20C56A] hover:underline ml-1">
                             {isSignUp ? 'Login' : 'Sign Up'}
                         </button>
                     </p>

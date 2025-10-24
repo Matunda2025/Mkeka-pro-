@@ -17,9 +17,11 @@ const TrendingUpIcon = () => (
 
 interface HomePageProps {
   tipsters: Tipster[];
+  subscribedTipsterIds: Set<string>;
+  onToggleSubscription: (tipsterId: string) => void;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ tipsters }) => {
+const HomePage: React.FC<HomePageProps> = ({ tipsters, subscribedTipsterIds, onToggleSubscription }) => {
   const topTipsters = tipsters.slice(0, 4);
   const tipstersToFollow = tipsters.slice(4);
 
@@ -48,7 +50,12 @@ const HomePage: React.FC<HomePageProps> = ({ tipsters }) => {
             </div>
             <div className="flex overflow-x-auto space-x-4 py-2 scrollbar-hide">
                 {topTipsters.map(tipster => (
-                    <TipsterCard key={tipster.id} tipster={tipster} />
+                    <TipsterCard 
+                        key={tipster.id} 
+                        tipster={tipster}
+                        isSubscribed={subscribedTipsterIds.has(tipster.id)}
+                        onSubscribeToggle={() => onToggleSubscription(tipster.id)}
+                    />
                 ))}
             </div>
         </section>
@@ -58,7 +65,12 @@ const HomePage: React.FC<HomePageProps> = ({ tipsters }) => {
             <h2 className="text-xl font-bold mb-2">Tipsters to follow</h2>
             <div className="flex overflow-x-auto space-x-4 py-2 scrollbar-hide">
                 {tipstersToFollow.map(tipster => (
-                    <TipsterCard key={tipster.id} tipster={tipster} />
+                    <TipsterCard 
+                        key={tipster.id} 
+                        tipster={tipster} 
+                        isSubscribed={subscribedTipsterIds.has(tipster.id)}
+                        onSubscribeToggle={() => onToggleSubscription(tipster.id)}
+                    />
                 ))}
             </div>
         </section>
