@@ -1,5 +1,6 @@
 import React from 'react';
 import { User } from 'firebase/auth';
+import { UserProfile } from '../types';
 
 // Icons for the menu items
 const MyBetslipsIcon = () => (
@@ -22,12 +23,12 @@ const PaymentHistoryIcon = () => (
 
 const ProfileSettingsIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
 );
 
-const AdminIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
+const AdminIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
 
 
 const LogoutIcon = () => (
@@ -42,10 +43,10 @@ const ChevronRightIcon = () => (
     </svg>
 );
 
-interface UserProfileProps {
+interface UserProfileCardProps {
   user: User | null;
 }
-const UserProfile: React.FC<UserProfileProps> = ({ user }) => (
+const UserProfileCard: React.FC<UserProfileCardProps> = ({ user }) => (
   <div className="flex flex-col items-center p-6 bg-[#1a1a1a] rounded-2xl">
     <img 
       src={user?.photoURL || `https://ui-avatars.com/api/?name=${user?.displayName || user?.email}&background=20C56A&color=fff&size=128`}
@@ -75,6 +76,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon, text, onClick }) => (
 
 interface AccountPageProps {
     user: User | null;
+    userProfile: UserProfile | null;
     onLogout: () => void;
     onNavigateToMyBetslips: () => void;
     onNavigateToAdmin: () => void;
@@ -83,17 +85,19 @@ interface AccountPageProps {
     onNavigateToProfileSettings: () => void;
 }
 
-const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, onNavigateToMyBetslips, onNavigateToAdmin, onNavigateToBetHistory, onNavigateToPaymentHistory, onNavigateToProfileSettings }) => {
+const AccountPage: React.FC<AccountPageProps> = ({ user, userProfile, onLogout, onNavigateToMyBetslips, onNavigateToAdmin, onNavigateToBetHistory, onNavigateToPaymentHistory, onNavigateToProfileSettings }) => {
   
   return (
     <main className="px-4 space-y-6">
-      <UserProfile user={user} />
+      <UserProfileCard user={user} />
       <div className="space-y-3">
         <MenuItem icon={<MyBetslipsIcon />} text="My Betslips" onClick={onNavigateToMyBetslips} />
         <MenuItem icon={<BetHistoryIcon />} text="Bet History" onClick={onNavigateToBetHistory} />
         <MenuItem icon={<PaymentHistoryIcon />} text="Payment History" onClick={onNavigateToPaymentHistory} />
         <MenuItem icon={<ProfileSettingsIcon />} text="Profile Settings" onClick={onNavigateToProfileSettings} />
-        <MenuItem icon={<AdminIcon />} text="Admin Panel" onClick={onNavigateToAdmin} />
+        {userProfile?.role && ['admin', 'developer', 'tipster'].includes(userProfile.role) && (
+            <MenuItem icon={<AdminIcon />} text="Admin Panel" onClick={onNavigateToAdmin} />
+        )}
       </div>
       <div className="pt-4">
          <button 

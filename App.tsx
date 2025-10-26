@@ -10,7 +10,7 @@ import SubscribePage from './components/SubscribePage';
 import BetHistoryPage from './components/BetHistoryPage';
 import PaymentHistoryPage from './components/PaymentHistoryPage';
 import ProfileSettingsPage from './components/ProfileSettingsPage';
-import type { Betslip, Tipster, Banner, Purchase, UserProfile } from './types';
+import type { Betslip, Tipster, Banner, Purchase, UserProfile, UserRole } from './types';
 import { db, storage, auth, rtdb } from './lib/firebase';
 import { collection, getDocs, addDoc, serverTimestamp as firestoreServerTimestamp, query, orderBy, where, deleteDoc, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadString, getDownloadURL, uploadBytes, deleteObject } from 'firebase/storage';
@@ -317,13 +317,13 @@ const handleUpdateProfile = async (displayName: string, photoFile: string, phone
     await updateProfile(user, { displayName, photoURL });
 
     const userDocRef = doc(db, "users", user.uid);
-    const updatedProfileData: Partial<UserProfile> = {};
+    const updatedProfileData: Partial<UserProfile> = {
+        displayName,
+    };
     if (phoneNumber !== undefined) {
         updatedProfileData.phoneNumber = phoneNumber;
     }
-    if(Object.keys(updatedProfileData).length > 0) {
-       await setDoc(userDocRef, updatedProfileData, { merge: true });
-    }
+    await setDoc(userDocRef, updatedProfileData, { merge: true });
    
     // The onAuthStateChanged listener will handle user state updates automatically.
     // Re-fetching the profile document to ensure our DB is in sync.
@@ -336,6 +336,11 @@ const handlePasswordReset = async () => {
     } else {
         throw new Error("User does not have an email associated.");
     }
+};
+
+const handleSetUserRole = async (uid: string, role: UserRole) => {
+    const userDocRef = doc(db, "users", uid);
+    await setDoc(userDocRef, { role }, { merge: true });
 };
 
 
@@ -361,10 +366,20 @@ const handlePasswordReset = async () => {
   const isDetailsOrAdmin = currentView === 'betslip-details' || currentView === 'admin' || currentView === 'bet-history' || currentView === 'payment-history' || currentView === 'profile-settings' || currentView === 'my-betslips';
   
   const goBack = () => {
-    if(currentView === 'betslip-details') setCurrentView('betslips');
-    else if (currentView === 'bet-history' || currentView === 'payment-history' || currentView === 'profile-settings' || currentView === 'my-betslips') setCurrentView('account');
-    else setCurrentView('home');
-  }
+    if (currentView === 'betslip-details') {
+      setCurrentView('betslips');
+    } else if (
+      currentView === 'bet-history' ||
+      currentView === 'payment-history' ||
+      currentView === 'profile-settings' ||
+      currentView === 'my-betslips' ||
+      currentView === 'admin'
+    ) {
+      setCurrentView('account');
+    } else {
+      setCurrentView('home');
+    }
+  };
 
   return (
     <div className="bg-[#121212] min-h-screen font-sans text-white max-w-md mx-auto flex flex-col">
@@ -393,11 +408,14 @@ const handlePasswordReset = async () => {
               onNavigateToBetHistory={() => setCurrentView('bet-history')}
               onNavigateToPaymentHistory={() => setCurrentView('payment-history')}
               onNavigateToProfileSettings={() => setCurrentView('profile-settings')}
+              userProfile={userProfile}
           />}
           {currentView === 'admin' && <AdminPage 
+            userProfile={userProfile}
             onAddBetslip={handleAddBetslip} onUpdateBetslip={handleUpdateBetslip} onDeleteBetslip={handleDeleteBetslip} betslips={betslips}
             onAddTipster={handleAddTipster} onUpdateTipster={handleUpdateTipster} onDeleteTipster={handleDeleteTipster} tipsters={tipsters}
             onAddBanner={handleAddBanner} onUpdateBanner={handleUpdateBanner} onDeleteBanner={handleDeleteBanner} banners={banners}
+            onSetUserRole={handleSetUserRole}
           />}
           {currentView === 'bet-history' && <BetHistoryPage allBetslips={betslips} purchasedBetslipIds={purchasedBetslipIds} onSelectBetslip={handleSelectBetslip} />}
           {currentView === 'payment-history' && <PaymentHistoryPage allBetslips={betslips} purchaseHistory={purchaseHistory} />}

@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Betslip, Tipster, Banner } from '../types';
+import type { Betslip, Tipster, Banner, UserProfile, UserRole } from '../types';
 import { rtdb, db } from '../lib/firebase';
 import { ref, onValue } from 'firebase/database';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, orderBy } from 'firebase/firestore';
 import Carousel from './Carousel';
 
 
 interface AdminPageProps {
+  userProfile: UserProfile | null;
   onAddBetslip: (betslip: Omit<Betslip, 'id'>) => Promise<void>;
   onUpdateBetslip: (betslipId: string, betslip: Omit<Betslip, 'id'>) => Promise<void>;
   onDeleteBetslip: (betslipId: string) => Promise<void>;
@@ -19,6 +20,7 @@ interface AdminPageProps {
   onAddBanner: (banner: { imageUrl: string; }) => Promise<void>;
   onUpdateBanner: (bannerId: string, banner: { imageUrl: string; }) => Promise<void>;
   onDeleteBanner: (bannerId: string) => Promise<void>;
+  onSetUserRole: (uid: string, role: UserRole) => Promise<void>;
 }
 
 // Icons for the new UI
@@ -342,8 +344,8 @@ const BetslipForm: React.FC<BetslipFormProps> = ({ onSave, onBack, tipsters, ini
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className={labelClasses}>Provider</label>
-                        <select value={selectedTipsterId} onChange={e => setSelectedTipsterId(e.target.value)} className={inputClasses} required>
-                            <option value="" disabled>Select a tipster</option>
+                        <select value={selectedTipsterId} onChange={e => setSelectedTipsterId(e.target.value)} className={inputClasses} required disabled={tipsters.length === 1}>
+                            {tipsters.length > 1 && <option value="" disabled>Select a tipster</option>}
                             {tipsters.map(tipster => (
                                 <option key={tipster.id} value={tipster.id}>{tipster.name}</option>
                             ))}
@@ -401,21 +403,85 @@ const BetslipForm: React.FC<BetslipFormProps> = ({ onSave, onBack, tipsters, ini
     );
 };
 
-
-const AddTipsterForm: React.FC<{ 
-    onSave: (tipster: Omit<Tipster, 'id' | 'gradientFrom' | 'gradientVia'>) => Promise<void>; 
+interface RoleFormProps {
+    onAdd: (tipster: Omit<Tipster, 'id' | 'gradientFrom' | 'gradientVia'>) => Promise<void>;
+    onUpdate: (tipsterId: string, tipster: Omit<Tipster, 'id' | 'gradientFrom' | 'gradientVia'>) => Promise<void>;
     onBack: () => void;
-    initialData?: Tipster | null;
-}> = ({ onSave, onBack, initialData = null }) => {
-    const isEditMode = !!initialData;
+    initialUser?: UserProfile | null;
+    onSetUserRole: (uid: string, role: UserRole) => Promise<void>;
+    allTipsters: Tipster[];
+}
 
-    const [name, setName] = useState(isEditMode ? initialData.name : '');
-    const [accuracy, setAccuracy] = useState(isEditMode ? initialData.accuracy.toString() : '');
+const RoleForm: React.FC<RoleFormProps> = ({ onAdd, onUpdate, onBack, initialUser = null, onSetUserRole, allTipsters }) => {
+    const isEditMode = !!initialUser;
+
+    const [name, setName] = useState('');
+    const [accuracy, setAccuracy] = useState('');
     const [tipsterImageFile, setTipsterImageFile] = useState<string>('');
-    const [tipsterImageUrl, setTipsterImageUrl] = useState<string>(isEditMode ? initialData.imageUrl : '');
+    const [tipsterImageUrl, setTipsterImageUrl] = useState<string>('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [role, setRole] = useState<UserRole>('user');
+
+    const [searchEmail, setSearchEmail] = useState('');
+    const [searchLoading, setSearchLoading] = useState(false);
+    const [searchMessage, setSearchMessage] = useState('');
+
+    const [activeUser, setActiveUser] = useState<UserProfile | null>(initialUser);
+    const [existingTipster, setExistingTipster] = useState<Tipster | null>(null);
+
+    useEffect(() => {
+        if (activeUser) {
+            const tipsterProfile = allTipsters.find(t => t.userId === activeUser.uid) || null;
+            setExistingTipster(tipsterProfile);
+            setRole(activeUser.role || 'user');
+
+            if (tipsterProfile) {
+                setName(tipsterProfile.name);
+                setAccuracy(tipsterProfile.accuracy.toString());
+                setTipsterImageUrl(tipsterProfile.imageUrl);
+            } else {
+                setName(activeUser.displayName || activeUser.email);
+                setAccuracy('');
+                setTipsterImageUrl('');
+            }
+        } else {
+            setName('');
+            setAccuracy('');
+            setTipsterImageUrl('');
+            setRole('user');
+            setExistingTipster(null);
+        }
+    }, [activeUser, allTipsters]);
+
+    const handleUserSearch = async () => {
+        if (!searchEmail) {
+            setSearchMessage('Tafadhali ingiza barua pepe.');
+            return;
+        }
+        setSearchLoading(true);
+        setSearchMessage('');
+        setActiveUser(null);
+        try {
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("email", "==", searchEmail.trim()));
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.empty) {
+                setSearchMessage('Mtumiaji hajapatikana kwa barua pepe hii.');
+            } else {
+                const userDoc = querySnapshot.docs[0];
+                const userData = { uid: userDoc.id, ...userDoc.data() } as UserProfile;
+                setActiveUser(userData);
+                setSearchMessage(`Mtumiaji amepatikana: ${userData.email}`);
+            }
+        } catch (error) {
+            setSearchMessage('Hitilafu imetokea wakati wa kutafuta.');
+            console.error("Error searching for user:", error);
+        } finally {
+            setSearchLoading(false);
+        }
+    };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -428,8 +494,8 @@ const AddTipsterForm: React.FC<{
             reader.readAsDataURL(file);
         }
     };
-    
-     const handleImageUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+    const handleImageUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setTipsterImageUrl(e.target.value);
         setTipsterImageFile('');
         if (fileInputRef.current) {
@@ -470,23 +536,37 @@ const AddTipsterForm: React.FC<{
         setIsLoading(true);
         setError(null);
 
-        if (!name || !accuracy) {
-            setError('Please fill in all required fields.');
+        if (!activeUser) {
+            setError('Hakuna mtumiaji aliyechaguliwa.');
             setIsLoading(false);
             return;
         }
-        
-        const finalImageUrl = tipsterImageFile || tipsterImageUrl || (isEditMode ? initialData.imageUrl : generateAvatarFromName(name));
 
         try {
-            await onSave({
-                name,
-                accuracy: parseFloat(accuracy),
-                imageUrl: finalImageUrl,
-            });
+            await onSetUserRole(activeUser.uid, role);
+
+            if (['tipster', 'admin', 'developer'].includes(role)) {
+                if (!name || !accuracy) {
+                    setError('Jina na usahihi vinahitajika kwa wasifu wa tipster.');
+                    setIsLoading(false);
+                    return;
+                }
+                const finalImageUrl = tipsterImageFile || tipsterImageUrl || generateAvatarFromName(name);
+                const tipsterData = {
+                    name,
+                    accuracy: parseFloat(accuracy),
+                    imageUrl: finalImageUrl,
+                    userId: activeUser.uid
+                };
+                if (existingTipster) {
+                    await onUpdate(existingTipster.id, tipsterData);
+                } else {
+                    await onAdd(tipsterData);
+                }
+            }
             onBack();
         } catch (err) {
-            setError(`Failed to ${isEditMode ? 'update' : 'add'} tipster. Please try again.`);
+            setError('Imeshindwa kuhifadhi mabadiliko. Tafadhali jaribu tena.');
             console.error(err);
         } finally {
             setIsLoading(false);
@@ -494,54 +574,85 @@ const AddTipsterForm: React.FC<{
     };
 
     const previewImageUrl = tipsterImageFile || tipsterImageUrl;
+    const showTipsterFields = ['tipster', 'admin', 'developer'].includes(role);
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-             <div className="flex items-center justify-between">
-                <button type="button" onClick={onBack} className="flex items-center text-sm font-semibold text-[#20C56A] hover:text-green-300"><BackIcon /> Back to Panel</button>
-                 <h2 className="text-xl font-bold text-white text-center">{isEditMode ? 'Edit Tipster' : 'Add New Tipster'}</h2>
-                 <div className="w-28"></div>
+            <div className="flex items-center justify-between">
+                <button type="button" onClick={onBack} className="flex items-center text-sm font-semibold text-[#20C56A] hover:text-green-300"><BackIcon /> Back</button>
+                <h2 className="text-xl font-bold text-white text-center">{isEditMode ? 'Edit User Role' : 'Add User / Assign Role'}</h2>
+                <div className="w-20"></div>
             </div>
-            <div className={cardClasses}>
-                <h3 className={cardTitleClasses}>Tipster Details</h3>
-                <div className="grid grid-cols-2 gap-4">
-                    <div><label className={labelClasses}>Tipster Name</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputClasses} placeholder="e.g., John Doe" required /></div>
-                    <div><label className={labelClasses}>Accuracy (%)</label><input type="number" step="0.01" value={accuracy} onChange={(e) => setAccuracy(e.target.value)} className={inputClasses} placeholder="e.g., 85.50" required /></div>
+
+            {!isEditMode && (
+                <div className={cardClasses}>
+                    <h3 className={cardTitleClasses}>Tafuta Mtumiaji</h3>
+                    <div className="flex items-center gap-2">
+                        <input type="email" value={searchEmail} onChange={e => setSearchEmail(e.target.value)} className={inputClasses} placeholder="Weka barua pepe ya mtumiaji" />
+                        <button type="button" onClick={handleUserSearch} disabled={searchLoading} className="py-3 px-4 font-bold rounded-lg bg-[#20C56A] hover:opacity-90 transition-opacity disabled:opacity-50">
+                            {searchLoading ? <LoadingSpinnerIcon /> : 'Tafuta'}
+                        </button>
+                    </div>
+                    {searchMessage && <p className={`text-sm text-center mt-2 ${activeUser ? 'text-green-400' : 'text-gray-400'}`}>{searchMessage}</p>}
                 </div>
-                
-                <div className="pt-4">
-                    <label className={labelClasses}>Tipster Image</label>
-                    <div className="space-y-3">
-                         {previewImageUrl ? (
-                            <div className="relative group">
-                                <img src={previewImageUrl} alt="Tipster Preview" className="w-full h-auto rounded-lg object-cover max-h-48" />
-                                <button type="button" onClick={removeImage} className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Remove image">
-                                    <TrashIcon />
-                                </button>
-                            </div>
-                        ) : (
-                             <div className="w-full h-32 rounded-lg bg-[#1F2921] flex items-center justify-center text-gray-500 border-2 border-dashed border-gray-600">
-                                <ImageIcon />
-                            </div>
-                        )}
-                        <div className="flex items-center space-x-2">
-                             <input type="file" accept="image/*" onChange={handleImageUpload} ref={fileInputRef} className="hidden" />
-                            <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 text-sm flex items-center justify-center bg-[#2a2a2a] py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors"><UploadIcon /> Upload</button>
-                            <span className="text-gray-500 text-xs">OR</span>
-                             <input type="text" value={tipsterImageUrl} onChange={handleImageUrlChange} className={`${inputClasses} flex-1`} placeholder="Paste URL" />
+            )}
+
+            {activeUser && (
+                <div className={cardClasses}>
+                    <h3 className={cardTitleClasses}>User Details</h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label className={labelClasses}>Assign Role</label>
+                            <select value={role} onChange={e => setRole(e.target.value as UserRole)} className={inputClasses}>
+                                <option value="user">User</option>
+                                <option value="tipster">Tipster</option>
+                                <option value="admin">Admin</option>
+                                <option value="developer">Developer</option>
+                            </select>
                         </div>
+                        <div>
+                            <label className={labelClasses}>Display Name</label>
+                            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputClasses} placeholder="e.g., John Doe" required />
+                        </div>
+                        {showTipsterFields && (
+                            <>
+                                <div>
+                                    <label className={labelClasses}>Accuracy (%)</label>
+                                    <input type="number" step="0.01" value={accuracy} onChange={(e) => setAccuracy(e.target.value)} className={inputClasses} placeholder="e.g., 85.50" required />
+                                </div>
+                                <div className="pt-4">
+                                    <label className={labelClasses}>Profile Image</label>
+                                    <div className="space-y-3">
+                                        {previewImageUrl ? (
+                                            <div className="relative group">
+                                                <img src={previewImageUrl} alt="Tipster Preview" className="w-full h-auto rounded-lg object-cover max-h-48" />
+                                                <button type="button" onClick={removeImage} className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Remove image"><TrashIcon /></button>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full h-32 rounded-lg bg-[#1F2921] flex items-center justify-center text-gray-500 border-2 border-dashed border-gray-600"><ImageIcon /></div>
+                                        )}
+                                        <div className="flex items-center space-x-2">
+                                            <input type="file" accept="image/*" onChange={handleImageUpload} ref={fileInputRef} className="hidden" />
+                                            <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 text-sm flex items-center justify-center bg-[#2a2a2a] py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors"><UploadIcon /> Upload</button>
+                                            <span className="text-gray-500 text-xs">OR</span>
+                                            <input type="text" value={tipsterImageUrl} onChange={handleImageUrlChange} className={`${inputClasses} flex-1`} placeholder="Paste URL" />
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-gray-400 text-center mt-3">If no image is provided, an avatar will be generated from the name.</p>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
-
-                <p className="text-xs text-gray-400 text-center">If no image is provided, an avatar will be generated from the name.</p>
-            </div>
+            )}
             {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-            <button type="submit" disabled={isLoading} className="w-full flex justify-center items-center py-4 text-md font-bold rounded-xl bg-gradient-to-r from-[#2DD4BF] to-[#20C56A] hover:opacity-90 transition-opacity disabled:opacity-50">
-                {isLoading ? <LoadingSpinnerIcon /> : isEditMode ? 'Update Tipster' : 'Add Tipster'}
+            <button type="submit" disabled={isLoading || !activeUser} className="w-full flex justify-center items-center py-4 text-md font-bold rounded-xl bg-gradient-to-r from-[#2DD4BF] to-[#20C56A] hover:opacity-90 transition-opacity disabled:opacity-50">
+                {isLoading ? <LoadingSpinnerIcon /> : 'Save Changes'}
             </button>
         </form>
     );
 };
+
 
 const BetslipListItem: React.FC<{ betslip: Betslip, onEdit: () => void; onDelete: () => void; }> = ({ betslip, onEdit, onDelete }) => (
     <div className="bg-[#1F2921] p-3 rounded-lg flex items-center justify-between">
@@ -760,18 +871,83 @@ const BannerListView: React.FC<{ banners: Banner[]; onBack: () => void; onEdit: 
     );
 };
 
+const UserListItem: React.FC<{ user: UserProfile, onEdit: () => void; }> = ({ user, onEdit }) => (
+    <div className="bg-[#1F2921] p-3 rounded-lg flex items-center justify-between">
+        <div className="flex items-center space-x-3 truncate">
+            <img src={`https://ui-avatars.com/api/?name=${user.displayName || user.email}&background=20C56A&color=fff&size=96`} alt={user.displayName} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+            <div className="truncate">
+                <p className="font-bold text-white truncate">{user.displayName || 'No Name'}</p>
+                <p className="text-xs text-gray-400 truncate">{user.email}</p>
+            </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={`font-semibold text-white text-xs px-2 py-1 rounded-full capitalize ${user.role === 'admin' ? 'bg-red-600' : user.role === 'developer' ? 'bg-purple-600' : user.role === 'tipster' ? 'bg-blue-600' : 'bg-gray-600'}`}>
+                {user.role || 'user'}
+            </span>
+            <button onClick={onEdit} className="p-2 bg-blue-900/40 text-blue-300 rounded-lg hover:bg-blue-900/60"><EditIcon /></button>
+        </div>
+    </div>
+);
+
+const UserListView: React.FC<{ onBack: () => void; onEdit: (user: UserProfile) => void; onAdd: () => void; }> = ({ onBack, onEdit, onAdd }) => {
+    const [users, setUsers] = useState<UserProfile[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            setIsLoading(true);
+            try {
+                const usersSnapshot = await getDocs(query(collection(db, "users"), orderBy("createdAt", "desc")));
+                const usersData = usersSnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile));
+                setUsers(usersData);
+            } catch (error) {
+                console.error("Error fetching users list:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchUsers();
+    }, []);
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+                <button type="button" onClick={onBack} className="flex items-center text-sm font-semibold text-[#20C56A] hover:text-green-300"><BackIcon /> Back to Panel</button>
+                <h2 className="text-xl font-bold text-white text-center">Manage Users</h2>
+                <div className="w-28"></div>
+            </div>
+            <button onClick={onAdd} className="w-full text-sm font-semibold text-center text-[#20C56A] hover:text-green-300 py-3 rounded-lg border-2 border-dashed border-gray-600 hover:border-[#20C56A] transition-colors">+ Add User / Assign Role</button>
+            {isLoading ? (
+                <div className="flex justify-center items-center py-10"><LoadingSpinnerIcon /></div>
+            ) : users.length > 0 ? (
+                <div className="space-y-3">
+                    {users.map(user => <UserListItem key={user.uid} user={user} onEdit={() => onEdit(user)} />)}
+                </div>
+            ) : (
+                <div className="text-center py-10">
+                    <p className="text-gray-400">No users found.</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
 
 const AdminPage: React.FC<AdminPageProps> = ({ 
+    userProfile,
     onAddBetslip, onUpdateBetslip, onDeleteBetslip, 
     onAddTipster, onUpdateTipster, onDeleteTipster, 
     betslips, tipsters, banners,
-    onAddBanner, onUpdateBanner, onDeleteBanner
+    onAddBanner, onUpdateBanner, onDeleteBanner,
+    onSetUserRole
 }) => {
-  type View = 'main' | 'add-betslip' | 'edit-betslip' | 'add-tipster' | 'edit-tipster' | 'view-betslips' | 'view-tipsters' | 'manage-banners' | 'add-banner' | 'edit-banner';
+  type View = 'main' | 'add-betslip' | 'edit-betslip' | 'add-role' | 'edit-role' | 'view-betslips' | 'view-tipsters' | 'manage-banners' | 'add-banner' | 'edit-banner' | 'view-users';
   const [currentView, setCurrentView] = useState<View>('main');
   const [betslipToEdit, setBetslipToEdit] = useState<Betslip | null>(null);
   const [tipsterToEdit, setTipsterToEdit] = useState<Tipster | null>(null);
   const [bannerToEdit, setBannerToEdit] = useState<Banner | null>(null);
+  const [userToEdit, setUserToEdit] = useState<UserProfile | null>(null);
+
 
   const handleStartEditBetslip = (betslip: Betslip) => {
     setBetslipToEdit(betslip);
@@ -779,9 +955,20 @@ const AdminPage: React.FC<AdminPageProps> = ({
   };
   
   const handleStartEditTipster = (tipster: Tipster) => {
+    const userForTipster = null;
     setTipsterToEdit(tipster);
-    setCurrentView('edit-tipster');
+    setCurrentView('edit-role');
   };
+
+   const handleStartEditUserRole = (user: UserProfile) => {
+    setUserToEdit(user);
+    setCurrentView('edit-role');
+  };
+
+  const handleStartAddUserRole = () => {
+    setUserToEdit(null);
+    setCurrentView('add-role');
+  }
 
   const handleStartEditBanner = (banner: Banner) => {
     setBannerToEdit(banner);
@@ -811,24 +998,67 @@ const AdminPage: React.FC<AdminPageProps> = ({
           <TotalBetslipsIcon />
           <span className="font-bold mt-2 text-white">Add Betslip</span>
         </button>
-        <button onClick={() => setCurrentView('add-tipster')} className="p-6 bg-[#1a1a1a] rounded-2xl flex flex-col items-center justify-center text-center hover:bg-gray-800 transition-colors">
+        <button onClick={() => setCurrentView('view-users')} className="p-6 bg-[#1a1a1a] rounded-2xl flex flex-col items-center justify-center text-center hover:bg-gray-800 transition-colors">
           <TotalTipstersIcon />
-          <span className="font-bold mt-2 text-white">Add Tipster</span>
+          <span className="font-bold mt-2 text-white">Manage Roles</span>
         </button>
       </div>
     </>
   );
+  
+  const renderTipsterContent = () => {
+    const tipsterProfile = tipsters.find(t => t.userId === userProfile?.uid);
+    const tipsterBetslips = tipsterProfile ? betslips.filter(b => b.provider.name === tipsterProfile.name) : [];
+
+    return (
+        <>
+        <div className="bg-[#1a1a1a] p-5 rounded-2xl">
+            <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-white">Your Betslips</h2>
+            <button onClick={() => setCurrentView('view-betslips')} className="text-sm font-semibold text-[#20C56A] hover:text-green-300">View All</button>
+            </div>
+            <div className="space-y-3">
+            {tipsterBetslips.slice(0, 3).map(betslip => <BetslipListItem key={betslip.id} betslip={betslip} onEdit={() => handleStartEditBetslip(betslip)} onDelete={() => onDeleteBetslip(betslip.id)} />)}
+            </div>
+        </div>
+        <button onClick={() => setCurrentView('add-betslip')} className="p-6 bg-[#1a1a1a] rounded-2xl flex flex-col items-center justify-center text-center hover:bg-gray-800 transition-colors w-full">
+            <TotalBetslipsIcon />
+            <span className="font-bold mt-2 text-white">Add New Betslip</span>
+        </button>
+        </>
+    );
+  };
 
   const renderContent = () => {
+    // Show restricted view for tipsters
+    if (userProfile?.role === 'tipster') {
+        const tipsterProfile = tipsters.find(t => t.userId === userProfile.uid);
+        const tipsterBetslips = tipsterProfile ? betslips.filter(b => b.provider.name === tipsterProfile.name) : [];
+        
+        switch (currentView) {
+            case 'add-betslip':
+                return <BetslipForm onSave={onAddBetslip} onBack={() => setCurrentView('main')} tipsters={tipsters.filter(t => t.userId === userProfile.uid)} />;
+            case 'edit-betslip':
+                 return <BetslipForm initialData={betslipToEdit} onSave={(data) => onUpdateBetslip(betslipToEdit!.id, data)} onBack={() => setCurrentView('view-betslips')} tipsters={tipsters.filter(t => t.userId === userProfile.uid)} />;
+            case 'view-betslips':
+                return <BetslipListView betslips={tipsterBetslips} onBack={() => setCurrentView('main')} onEdit={handleStartEditBetslip} onDelete={onDeleteBetslip} />;
+            default:
+                return renderTipsterContent();
+        }
+    }
+    
+    // Full admin view for 'admin' and 'developer'
     switch (currentView) {
       case 'add-betslip':
         return <BetslipForm onSave={onAddBetslip} onBack={() => setCurrentView('main')} tipsters={tipsters} />;
       case 'edit-betslip':
         return <BetslipForm initialData={betslipToEdit} onSave={(data) => onUpdateBetslip(betslipToEdit!.id, data)} onBack={() => setCurrentView('view-betslips')} tipsters={tipsters} />;
-      case 'add-tipster':
-        return <AddTipsterForm onSave={onAddTipster} onBack={() => setCurrentView('main')} />;
-      case 'edit-tipster':
-        return <AddTipsterForm initialData={tipsterToEdit} onSave={(data) => onUpdateTipster(tipsterToEdit!.id, data)} onBack={() => setCurrentView('view-tipsters')} />;
+      case 'view-users':
+        return <UserListView onBack={() => setCurrentView('main')} onEdit={handleStartEditUserRole} onAdd={handleStartAddUserRole} />;
+      case 'add-role':
+        return <RoleForm onAdd={onAddTipster} onUpdate={onUpdateTipster} onBack={() => setCurrentView('view-users')} onSetUserRole={onSetUserRole} allTipsters={tipsters} />;
+      case 'edit-role':
+        return <RoleForm initialUser={userToEdit} onAdd={onAddTipster} onUpdate={onUpdateTipster} onBack={() => setCurrentView('view-users')} onSetUserRole={onSetUserRole} allTipsters={tipsters} />;
       case 'view-betslips':
         return <BetslipListView betslips={betslips} onBack={() => setCurrentView('main')} onEdit={handleStartEditBetslip} onDelete={onDeleteBetslip} />;
       case 'view-tipsters':

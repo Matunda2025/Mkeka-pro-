@@ -1,3 +1,5 @@
+export type UserRole = 'developer' | 'admin' | 'tipster' | 'user';
+
 export interface Tipster {
   id: string;
   name: string;
@@ -5,6 +7,7 @@ export interface Tipster {
   imageUrl: string;
   gradientFrom: string;
   gradientVia: string;
+  userId?: string;
 }
 
 export interface Betslip {
@@ -44,9 +47,11 @@ export interface Purchase {
 export interface UserProfile {
   uid: string;
   email: string;
+  displayName?: string;
   createdAt: {
     seconds: number;
     nanoseconds: number;
   };
   phoneNumber?: string;
+  role?: UserRole;
 }

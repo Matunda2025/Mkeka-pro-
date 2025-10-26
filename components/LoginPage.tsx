@@ -4,6 +4,7 @@ import {
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
+    updateProfile,
     AuthError
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -58,9 +59,13 @@ const LoginPage: React.FC = () => {
         try {
             if (isSignUp) {
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const initialDisplayName = email.split('@')[0];
+                await updateProfile(userCredential.user, { displayName: initialDisplayName });
+
                 // Add user info to Firestore for tracking
                 await setDoc(doc(db, "users", userCredential.user.uid), {
                     email: userCredential.user.email,
+                    displayName: initialDisplayName,
                     createdAt: serverTimestamp(),
                     uid: userCredential.user.uid,
                 });
