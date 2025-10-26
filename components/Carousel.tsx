@@ -1,25 +1,29 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 
-const images = [
-  "https://picsum.photos/seed/basket1/600/400",
-  "https://picsum.photos/seed/basket2/600/400",
-  "https://picsum.photos/seed/basket3/600/400",
-  "https://picsum.photos/seed/basket4/600/400",
-  "https://picsum.photos/seed/basket5/600/400"
-];
+interface CarouselProps {
+  images: string[];
+}
 
-const Carousel: React.FC = () => {
+const Carousel: React.FC<CarouselProps> = ({ images }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const nextSlide = useCallback(() => {
+    if (images.length === 0) return;
     setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
-  }, []);
+  }, [images.length]);
 
   useEffect(() => {
     const slideInterval = setInterval(nextSlide, 3000);
     return () => clearInterval(slideInterval);
   }, [nextSlide]);
+
+  if (!images || images.length === 0) {
+    return (
+      <div className="relative w-full h-56 md:h-64 rounded-xl overflow-hidden bg-[#1F2921] flex items-center justify-center">
+        <p className="text-gray-400">No promotional banners available.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full h-56 md:h-64 rounded-xl overflow-hidden">

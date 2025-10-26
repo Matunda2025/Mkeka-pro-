@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { Betslip, Tipster } from '../types';
+import type { Betslip, Tipster, Banner } from '../types';
 import { rtdb, db } from '../lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import Carousel from './Carousel';
 
 
 interface AdminPageProps {
@@ -14,6 +15,10 @@ interface AdminPageProps {
   onDeleteTipster: (tipsterId: string) => Promise<void>;
   betslips: Betslip[];
   tipsters: Tipster[];
+  banners: Banner[];
+  onAddBanner: (banner: { imageUrl: string; }) => Promise<void>;
+  onUpdateBanner: (bannerId: string, banner: { imageUrl: string; }) => Promise<void>;
+  onDeleteBanner: (bannerId: string) => Promise<void>;
 }
 
 // Icons for the new UI
@@ -618,12 +623,155 @@ const TipsterListView: React.FC<{ tipsters: Tipster[]; onBack: () => void; onEdi
     );
 };
 
+const BannerForm: React.FC<{
+    onSave: (banner: { imageUrl: string }) => Promise<void>;
+    onBack: () => void;
+    initialData?: Banner | null;
+}> = ({ onSave, onBack, initialData = null }) => {
+    const isEditMode = !!initialData;
+    const [imageFile, setImageFile] = useState<string>('');
+    const [imageUrl, setImageUrl] = useState<string>(isEditMode ? initialData.imageUrl : '');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-const AdminPage: React.FC<AdminPageProps> = ({ onAddBetslip, onUpdateBetslip, onDeleteBetslip, onAddTipster, onUpdateTipster, onDeleteTipster, betslips, tipsters }) => {
-  type View = 'main' | 'add-betslip' | 'edit-betslip' | 'add-tipster' | 'edit-tipster' | 'view-betslips' | 'view-tipsters';
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImageFile(reader.result as string);
+                setImageUrl('');
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleImageUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setImageUrl(e.target.value);
+        setImageFile('');
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const removeImage = () => {
+        setImageFile('');
+        setImageUrl('');
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+        const finalImageUrl = imageFile || imageUrl;
+        if (!finalImageUrl) {
+            setError('Please provide an image by uploading or pasting a URL.');
+            setIsLoading(false);
+            return;
+        }
+        try {
+            await onSave({ imageUrl: finalImageUrl });
+            onBack();
+        } catch (err) {
+            setError(`Failed to ${isEditMode ? 'update' : 'add'} banner. Please try again.`);
+            console.error(err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const previewImageUrl = imageFile || imageUrl;
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="flex items-center justify-between">
+                <button type="button" onClick={onBack} className="flex items-center text-sm font-semibold text-[#20C56A] hover:text-green-300"><BackIcon /> Back to Banners</button>
+                <h2 className="text-xl font-bold text-white text-center">{isEditMode ? 'Edit Banner' : 'Add New Banner'}</h2>
+                <div className="w-32"></div>
+            </div>
+            <div className={cardClasses}>
+                <h3 className={cardTitleClasses}>Banner Image</h3>
+                <div className="space-y-3">
+                    {previewImageUrl ? (
+                        <div className="relative group">
+                            <img src={previewImageUrl} alt="Banner Preview" className="w-full h-auto rounded-lg object-cover max-h-48" />
+                            <button type="button" onClick={removeImage} className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Remove image">
+                                <TrashIcon />
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="w-full h-32 rounded-lg bg-[#1F2921] flex items-center justify-center text-gray-500 border-2 border-dashed border-gray-600">
+                            <ImageIcon />
+                        </div>
+                    )}
+                    <div className="flex items-center space-x-2">
+                        <input type="file" accept="image/*" onChange={handleImageUpload} ref={fileInputRef} className="hidden" />
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="flex-1 text-sm flex items-center justify-center bg-[#2a2a2a] py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors"><UploadIcon /> Upload</button>
+                        <span className="text-gray-500 text-xs">OR</span>
+                        <input type="text" value={imageUrl} onChange={handleImageUrlChange} className={`${inputClasses} flex-1`} placeholder="Paste Image URL" />
+                    </div>
+                </div>
+            </div>
+            {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+            <button type="submit" disabled={isLoading} className="w-full flex justify-center items-center py-4 text-md font-bold rounded-xl bg-gradient-to-r from-[#2DD4BF] to-[#20C56A] hover:opacity-90 transition-opacity disabled:opacity-50">
+                {isLoading ? <LoadingSpinnerIcon /> : isEditMode ? 'Update Banner' : 'Add Banner'}
+            </button>
+        </form>
+    );
+};
+
+
+const BannerListItem: React.FC<{ banner: Banner, onEdit: () => void; onDelete: () => void; }> = ({ banner, onEdit, onDelete }) => (
+    <div className="bg-[#1F2921] p-3 rounded-lg flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+            <img src={banner.imageUrl} alt="Banner" className="w-16 h-10 rounded-md object-cover" />
+            <p className="font-semibold text-white text-sm truncate max-w-xs">{banner.imageUrl}</p>
+        </div>
+        <div className="flex items-center space-x-2">
+            <button onClick={onEdit} className="p-2 bg-blue-900/40 text-blue-300 rounded-lg hover:bg-blue-900/60"><EditIcon /></button>
+            <button onClick={onDelete} className="p-2 bg-red-900/40 text-red-400 rounded-lg hover:bg-red-900/60"><TrashIcon /></button>
+        </div>
+    </div>
+);
+
+const BannerListView: React.FC<{ banners: Banner[]; onBack: () => void; onEdit: (t: Banner) => void; onDelete: (id: string) => void; onAdd: () => void; }> = ({ banners, onBack, onEdit, onDelete, onAdd }) => {
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+                <button type="button" onClick={onBack} className="flex items-center text-sm font-semibold text-[#20C56A] hover:text-green-300"><BackIcon /> Back to Panel</button>
+                <h2 className="text-xl font-bold text-white text-center">Manage Banners</h2>
+                <div className="w-28"></div>
+            </div>
+            <button onClick={onAdd} className="w-full text-sm font-semibold text-center text-[#20C56A] hover:text-green-300 py-3 rounded-lg border-2 border-dashed border-gray-600 hover:border-[#20C56A] transition-colors">+ Add New Banner</button>
+            {banners.length > 0 ? (
+                <div className="space-y-3">
+                    {banners.map(banner => <BannerListItem key={banner.id} banner={banner} onEdit={() => onEdit(banner)} onDelete={() => onDelete(banner.id)} />)}
+                </div>
+            ) : (
+                <div className="text-center py-10">
+                    <p className="text-gray-400">No banners have been added yet.</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+const AdminPage: React.FC<AdminPageProps> = ({ 
+    onAddBetslip, onUpdateBetslip, onDeleteBetslip, 
+    onAddTipster, onUpdateTipster, onDeleteTipster, 
+    betslips, tipsters, banners,
+    onAddBanner, onUpdateBanner, onDeleteBanner
+}) => {
+  type View = 'main' | 'add-betslip' | 'edit-betslip' | 'add-tipster' | 'edit-tipster' | 'view-betslips' | 'view-tipsters' | 'manage-banners' | 'add-banner' | 'edit-banner';
   const [currentView, setCurrentView] = useState<View>('main');
   const [betslipToEdit, setBetslipToEdit] = useState<Betslip | null>(null);
   const [tipsterToEdit, setTipsterToEdit] = useState<Tipster | null>(null);
+  const [bannerToEdit, setBannerToEdit] = useState<Banner | null>(null);
 
   const handleStartEditBetslip = (betslip: Betslip) => {
     setBetslipToEdit(betslip);
@@ -635,6 +783,11 @@ const AdminPage: React.FC<AdminPageProps> = ({ onAddBetslip, onUpdateBetslip, on
     setCurrentView('edit-tipster');
   };
 
+  const handleStartEditBanner = (banner: Banner) => {
+    setBannerToEdit(banner);
+    setCurrentView('edit-banner');
+  };
+
   const renderMainContent = () => (
     <>
       <StatsCard 
@@ -644,6 +797,14 @@ const AdminPage: React.FC<AdminPageProps> = ({ onAddBetslip, onUpdateBetslip, on
         onViewTipsters={() => setCurrentView('view-tipsters')} 
       />
       <UserStatsCard />
+
+      <div className="bg-[#1a1a1a] p-5 rounded-2xl">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-white">Promotional Banners</h2>
+          <button onClick={() => setCurrentView('manage-banners')} className="text-sm font-semibold text-[#20C56A] hover:text-green-300">Manage</button>
+        </div>
+        <Carousel images={banners.map(b => b.imageUrl)} />
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <button onClick={() => setCurrentView('add-betslip')} className="p-6 bg-[#1a1a1a] rounded-2xl flex flex-col items-center justify-center text-center hover:bg-gray-800 transition-colors">
@@ -672,6 +833,12 @@ const AdminPage: React.FC<AdminPageProps> = ({ onAddBetslip, onUpdateBetslip, on
         return <BetslipListView betslips={betslips} onBack={() => setCurrentView('main')} onEdit={handleStartEditBetslip} onDelete={onDeleteBetslip} />;
       case 'view-tipsters':
         return <TipsterListView tipsters={tipsters} onBack={() => setCurrentView('main')} onEdit={handleStartEditTipster} onDelete={onDeleteTipster} />;
+      case 'manage-banners':
+        return <BannerListView banners={banners} onBack={() => setCurrentView('main')} onEdit={handleStartEditBanner} onDelete={onDeleteBanner} onAdd={() => setCurrentView('add-banner')} />;
+      case 'add-banner':
+        return <BannerForm onSave={onAddBanner} onBack={() => setCurrentView('manage-banners')} />;
+      case 'edit-banner':
+        return <BannerForm initialData={bannerToEdit} onSave={(data) => onUpdateBanner(bannerToEdit!.id, data)} onBack={() => setCurrentView('manage-banners')} />;
       case 'main':
       default:
         return renderMainContent();

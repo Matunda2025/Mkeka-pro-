@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { Betslip } from '../types';
+import type { Betslip, UserProfile } from '../types';
 import PaymentModal from './PaymentModal';
 import { User } from 'firebase/auth';
 
@@ -54,9 +54,10 @@ interface BetslipDetailsPageProps {
     isPurchased: boolean;
     onPurchase: (betslip: Betslip) => void;
     user: User | null;
+    userProfile: UserProfile | null;
 }
 
-const BetslipDetailsPage: React.FC<BetslipDetailsPageProps> = ({ betslip, isPurchased, onPurchase, user }) => {
+const BetslipDetailsPage: React.FC<BetslipDetailsPageProps> = ({ betslip, isPurchased, onPurchase, user, userProfile }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handlePurchaseClick = () => {
@@ -75,6 +76,7 @@ const BetslipDetailsPage: React.FC<BetslipDetailsPageProps> = ({ betslip, isPurc
         <PaymentModal 
             betslip={betslip}
             user={user}
+            userProfile={userProfile}
             onClose={() => setIsModalOpen(false)}
             onPurchaseSuccess={handlePurchaseSuccess}
         />

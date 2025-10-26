@@ -48,11 +48,11 @@ interface UserProfileProps {
 const UserProfile: React.FC<UserProfileProps> = ({ user }) => (
   <div className="flex flex-col items-center p-6 bg-[#1a1a1a] rounded-2xl">
     <img 
-      src={user?.photoURL || `https://picsum.photos/seed/${user?.uid || 'default_user'}/100`}
+      src={user?.photoURL || `https://ui-avatars.com/api/?name=${user?.displayName || user?.email}&background=20C56A&color=fff&size=128`}
       alt="User Avatar" 
       className="w-24 h-24 rounded-full object-cover border-4 border-[#20C56A]" 
     />
-    <h2 className="mt-4 text-2xl font-bold text-white">{user?.displayName || 'Kaka User'}</h2>
+    <h2 className="mt-4 text-2xl font-bold text-white">{user?.displayName || 'MIKEKA PRO User'}</h2>
     <p className="text-sm text-gray-400">{user?.email}</p>
   </div>
 );
@@ -78,22 +78,21 @@ interface AccountPageProps {
     onLogout: () => void;
     onNavigateToMyBetslips: () => void;
     onNavigateToAdmin: () => void;
+    onNavigateToBetHistory: () => void;
+    onNavigateToPaymentHistory: () => void;
+    onNavigateToProfileSettings: () => void;
 }
 
-const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, onNavigateToMyBetslips, onNavigateToAdmin }) => {
-  const handleMenuItemClick = (itemName: string) => {
-    // In a real app, this would navigate to a new page.
-    alert(`This feature (${itemName}) is coming soon!`);
-  };
+const AccountPage: React.FC<AccountPageProps> = ({ user, onLogout, onNavigateToMyBetslips, onNavigateToAdmin, onNavigateToBetHistory, onNavigateToPaymentHistory, onNavigateToProfileSettings }) => {
   
   return (
     <main className="px-4 space-y-6">
       <UserProfile user={user} />
       <div className="space-y-3">
         <MenuItem icon={<MyBetslipsIcon />} text="My Betslips" onClick={onNavigateToMyBetslips} />
-        <MenuItem icon={<BetHistoryIcon />} text="Bet History" onClick={() => handleMenuItemClick('Bet History')} />
-        <MenuItem icon={<PaymentHistoryIcon />} text="Payment History" onClick={() => handleMenuItemClick('Payment History')} />
-        <MenuItem icon={<ProfileSettingsIcon />} text="Profile Settings" onClick={() => handleMenuItemClick('Profile Settings')} />
+        <MenuItem icon={<BetHistoryIcon />} text="Bet History" onClick={onNavigateToBetHistory} />
+        <MenuItem icon={<PaymentHistoryIcon />} text="Payment History" onClick={onNavigateToPaymentHistory} />
+        <MenuItem icon={<ProfileSettingsIcon />} text="Profile Settings" onClick={onNavigateToProfileSettings} />
         <MenuItem icon={<AdminIcon />} text="Admin Panel" onClick={onNavigateToAdmin} />
       </div>
       <div className="pt-4">

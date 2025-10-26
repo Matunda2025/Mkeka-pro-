@@ -22,18 +22,18 @@ const LoadingSpinner = () => (
 const getFriendlyErrorMessage = (errorCode: string): string => {
     switch (errorCode) {
         case 'auth/invalid-email':
-            return 'Please enter a valid email address.';
+            return 'Tafadhali ingiza barua pepe sahihi.';
         case 'auth/user-not-found':
         case 'auth/wrong-password':
-            return 'Invalid email or password. Please try again.';
+            return 'Barua pepe au nenosiri si sahihi. Tafadhali jaribu tena.';
         case 'auth/email-already-in-use':
-            return 'This email is already registered. Please log in.';
+            return 'Barua pepe hii ishasajiliwa. Tafadhali ingia.';
         case 'auth/weak-password':
-            return 'Password should be at least 6 characters long.';
+            return 'Nenosiri linapaswa kuwa na angalau herufi 6.';
         case 'auth/operation-not-allowed':
-             return 'Email/password accounts are not enabled.';
+             return 'Akaunti za barua pepe/nenosiri hazijawashwa.';
         default:
-            return 'An unexpected error occurred. Please try again.';
+            return 'Kulitokea hitilafu isiyotarajiwa. Tafadhali jaribu tena.';
     }
 }
 
@@ -79,14 +79,14 @@ const LoginPage: React.FC = () => {
     const handleForgotPassword = async () => {
         if (!email) {
             clearMessages();
-            setError("Please enter your email to reset the password.");
+            setError("Tafadhali ingiza barua pepe yako ili kuweka nenosiri jipya.");
             return;
         }
         setIsLoading(true);
         clearMessages();
         try {
             await sendPasswordResetEmail(auth, email);
-            setSuccessMessage("Password reset email sent. Please check your inbox!");
+            setSuccessMessage("Barua pepe ya kuweka nenosiri jipya imetumwa. Tafadhali angalia kikasha chako!");
         } catch (err) {
             const authError = err as AuthError;
             setError(getFriendlyErrorMessage(authError.code));
@@ -101,17 +101,17 @@ const LoginPage: React.FC = () => {
             <div className="text-center mb-8">
                 <div className="flex flex-col justify-center items-center gap-4">
                     <ShieldIcon />
-                    <h1 className="text-3xl font-bold">Kaka App</h1>
+                    <h1 className="text-3xl font-bold">MIKEKA PRO</h1>
                     <p className="text-gray-400">Your trusted source for tips.</p>
                 </div>
             </div>
 
             <div className="w-full max-w-sm">
                  <form onSubmit={handleSubmit} className="bg-[#1a1a1a] rounded-2xl p-8 space-y-6">
-                    <h2 className="text-2xl font-bold text-center">{isSignUp ? 'Create Account' : 'Welcome Back'}</h2>
+                    <h2 className="text-2xl font-bold text-center">{isSignUp ? 'Fungua Akaunti' : 'Karibu Tena'}</h2>
                     
                     <div>
-                        <label className="block text-sm font-semibold text-gray-300 mb-2">Email Address</label>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2">Barua Pepe</label>
                         <input
                             type="email"
                             value={email}
@@ -123,7 +123,7 @@ const LoginPage: React.FC = () => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-semibold text-gray-300 mb-2">Password</label>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2">Nenosiri</label>
                         <input
                             type="password"
                             value={password}
@@ -140,7 +140,7 @@ const LoginPage: React.FC = () => {
                                     className="text-sm font-semibold text-gray-400 hover:text-[#20C56A] transition-colors disabled:opacity-50"
                                     disabled={isLoading}
                                 >
-                                    Forgot Password?
+                                    Umesahau Nenosiri?
                                 </button>
                             </div>
                         )}
@@ -155,13 +155,13 @@ const LoginPage: React.FC = () => {
                         disabled={isLoading}
                         className="w-full flex justify-center items-center py-3.5 text-md font-bold rounded-xl bg-gradient-to-r from-[#2DD4BF] to-[#20C56A] hover:opacity-90 transition-opacity disabled:opacity-50"
                     >
-                        {isLoading ? <LoadingSpinner /> : (isSignUp ? 'Sign Up' : 'Login')}
+                        {isLoading ? <LoadingSpinner /> : (isSignUp ? 'Jisajili' : 'Ingia')}
                     </button>
                     
                     <p className="text-sm text-center text-gray-400">
-                        {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+                        {isSignUp ? 'Tayari una akaunti?' : "Huna akaunti?"}
                         <button type="button" onClick={() => { setIsSignUp(!isSignUp); clearMessages(); }} className="font-semibold text-[#20C56A] hover:underline ml-1">
-                            {isSignUp ? 'Login' : 'Sign Up'}
+                            {isSignUp ? 'Ingia' : 'Jisajili'}
                         </button>
                     </p>
                 </form>

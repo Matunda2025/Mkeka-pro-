@@ -26,7 +26,7 @@ const TipsterCard: React.FC<TipsterCardProps> = ({ tipster, isSubscribed, onSubs
                 : 'bg-[#20C56A] hover:bg-green-700'
             }`}
         >
-          {isSubscribed ? 'Subscribed' : 'Subscribe'}
+          {isSubscribed ? 'Following' : 'Follow'}
         </button>
       </div>
     </div>

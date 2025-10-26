@@ -1,7 +1,7 @@
 import React from 'react';
 import Carousel from './Carousel';
 import TipsterCard from './TipsterCard';
-import type { Tipster } from '../types';
+import type { Tipster, Banner } from '../types';
 
 const SearchIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -9,26 +9,29 @@ const SearchIcon = () => (
     </svg>
 );
 
-const TrendingUpIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+const DollarIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182.553-.44 1.282-.659 2.003-.659c.725 0 1.45.22 2.003.659C13.536 9.781 14 10.5 14 11.25" />
     </svg>
 );
 
+
 interface HomePageProps {
   tipsters: Tipster[];
+  banners: Banner[];
   subscribedTipsterIds: Set<string>;
   onToggleSubscription: (tipsterId: string) => void;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ tipsters, subscribedTipsterIds, onToggleSubscription }) => {
+const HomePage: React.FC<HomePageProps> = ({ tipsters, banners, subscribedTipsterIds, onToggleSubscription }) => {
   const topTipsters = tipsters.slice(0, 4);
   const tipstersToFollow = tipsters.slice(4);
+  const bannerImages = banners.map(b => b.imageUrl);
 
   return (
     <main className="px-4 space-y-6">
         {/* Carousel */}
-        <Carousel />
+        <Carousel images={bannerImages} />
 
         {/* Search Bar */}
         <div className="relative">
@@ -46,7 +49,7 @@ const HomePage: React.FC<HomePageProps> = ({ tipsters, subscribedTipsterIds, onT
         <section>
             <div className="flex items-center space-x-2 mb-2">
                 <h2 className="text-xl font-bold">Top Tipsters</h2>
-                <TrendingUpIcon />
+                <DollarIcon />
             </div>
             <div className="flex overflow-x-auto space-x-4 py-2 scrollbar-hide">
                 {topTipsters.map(tipster => (

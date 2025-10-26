@@ -25,3 +25,28 @@ export interface Betslip {
   code?: string;
   betslipImageUrl?: string;
 }
+
+export interface Banner {
+  id: string;
+  imageUrl: string;
+}
+
+export interface Purchase {
+  id: string;
+  userId: string;
+  betslipId: string;
+  purchasedAt: {
+    seconds: number;
+    nanoseconds: number;
+  };
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  createdAt: {
+    seconds: number;
+    nanoseconds: number;
+  };
+  phoneNumber?: string;
+}

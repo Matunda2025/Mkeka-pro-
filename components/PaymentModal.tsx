@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Betslip } from '../types';
+import type { Betslip, UserProfile } from '../types';
 import { User } from 'firebase/auth';
 
 // Icons
@@ -12,8 +12,16 @@ const SONIC_PESA_API_KEY = 'pk_7fd82b60f1916797516321ebc311bcb1';
 const CREATE_ORDER_URL = 'https://sonicpesa.com/api/payment/create';
 const ORDER_STATUS_URL = 'https://sonicpesa.com/api/payment/status';
 
-const PaymentModal: React.FC<{ betslip: Betslip; user: User | null; onClose: () => void; onPurchaseSuccess: () => void; }> = ({ betslip, user, onClose, onPurchaseSuccess }) => {
-    const [phoneNumber, setPhoneNumber] = useState('0753466356');
+interface PaymentModalProps {
+    betslip: Betslip;
+    user: User | null;
+    userProfile: UserProfile | null;
+    onClose: () => void;
+    onPurchaseSuccess: () => void;
+}
+
+const PaymentModal: React.FC<PaymentModalProps> = ({ betslip, user, userProfile, onClose, onPurchaseSuccess }) => {
+    const [phoneNumber, setPhoneNumber] = useState(userProfile?.phoneNumber || '');
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -57,7 +65,7 @@ const PaymentModal: React.FC<{ betslip: Betslip; user: User | null; onClose: () 
                 body: JSON.stringify({
                     phone: formattedPhone,
                     amount: amount,
-                    name: user.displayName || 'Kaka User',
+                    name: user.displayName || 'MIKEKA PRO User',
                     email: user.email || 'user@example.com'
                 })
             });
@@ -92,7 +100,7 @@ const PaymentModal: React.FC<{ betslip: Betslip; user: User | null; onClose: () 
                     }
                 } catch (pollError) {
                     cleanup();
-                    setError(pollError instanceof Error ? pollError.message : 'Kuna tatizo la kuangalia hali ya malipo.');
+                    setError(pollError instanceof Error ? pollError.message : 'Kulitokea hitilafu ya kuangalia hali ya malipo.');
                     setIsLoading(false);
                 }
             }, 3000);
@@ -107,7 +115,8 @@ const PaymentModal: React.FC<{ betslip: Betslip; user: User | null; onClose: () 
 
         } catch (err) {
             cleanup();
-            setError(err instanceof Error ? err.message : 'Kuna tatizo lisilojulikana limetokea.');
+            const errorMessage = err instanceof Error ? err.message : 'Kulitokea hitilafu isiyotarajiwa. Tafadhali jaribu tena.';
+            setError(errorMessage);
             setIsLoading(false);
         }
     };
