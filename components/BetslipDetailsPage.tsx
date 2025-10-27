@@ -107,8 +107,18 @@ const BetslipDetailsPage: React.FC<BetslipDetailsPageProps> = ({ betslip, isPurc
       <div className="space-y-3">
         <h4 className="font-bold text-lg">Bet Companies</h4>
         <div className="flex items-center space-x-2">
-            {betslip.sponsors.map((sponsor) => (
-                <div key={sponsor.name} className="bg-[#1f844a] h-6 w-24 rounded"></div>
+            {betslip.sponsors.map(sponsor => (
+              <div key={sponsor.name} className={`h-8 flex items-center justify-center rounded-lg px-4 text-white font-bold text-sm ${
+                sponsor.name === 'SportyBet' ? 'bg-red-600' :
+                sponsor.name === 'PARIPESA' ? 'bg-blue-600' :
+                'bg-gray-700'
+              }`}>
+                {sponsor.name === 'Sokabet' ? (
+                  <span className="italic opacity-90">Sokabet</span>
+                ) : (
+                  <span>{sponsor.name}</span>
+                )}
+              </div>
             ))}
         </div>
       </div>

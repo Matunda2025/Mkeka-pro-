@@ -10,6 +10,7 @@ import SubscribePage from './components/SubscribePage';
 import BetHistoryPage from './components/BetHistoryPage';
 import PaymentHistoryPage from './components/PaymentHistoryPage';
 import ProfileSettingsPage from './components/ProfileSettingsPage';
+import LogoutConfirmationPage from './components/LogoutConfirmationPage';
 import type { Betslip, Tipster, Banner, Purchase, UserProfile, UserRole } from './types';
 import { db, storage, auth, rtdb } from './lib/firebase';
 import { collection, getDocs, addDoc, serverTimestamp as firestoreServerTimestamp, query, orderBy, where, deleteDoc, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
@@ -44,7 +45,7 @@ const NavItem: React.FC<{ icon: React.ReactNode; label: string; isActive: boolea
     </button>
 );
 
-type View = 'home' | 'betslips' | 'my-betslips' | 'subscribe' | 'account' | 'admin' | 'betslip-details' | 'bet-history' | 'payment-history' | 'profile-settings';
+type View = 'home' | 'betslips' | 'my-betslips' | 'subscribe' | 'account' | 'admin' | 'betslip-details' | 'bet-history' | 'payment-history' | 'profile-settings' | 'logout-confirm';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('home');
@@ -159,13 +160,22 @@ const App: React.FC = () => {
   }, [fetchAdminData, fetchUserPurchases, fetchUserSubscriptions, fetchUserProfile]);
 
 
-  const handleLogout = async () => {
-    if (auth.currentUser) {
-        const userStatusDatabaseRef = databaseRef(rtdb, '/status/' + auth.currentUser.uid);
-        await set(userStatusDatabaseRef, { isOnline: false, last_changed: databaseServerTimestamp() });
+  const handleConfirmLogout = async () => {
+    try {
+        if (auth.currentUser) {
+            // Fire and forget the status update to not block the sign-out process
+            const userStatusDatabaseRef = databaseRef(rtdb, '/status/' + auth.currentUser.uid);
+            set(userStatusDatabaseRef, { isOnline: false, last_changed: databaseServerTimestamp() })
+                .catch(err => console.error("RTDB status update failed:", err));
+        }
+        await signOut(auth);
+        // Explicitly set user to null to ensure immediate UI update to LoginPage,
+        // acting as a safeguard in case the onAuthStateChanged listener has a delay.
+        setUser(null);
+        setCurrentView('home'); // Reset view to home on logout
+    } catch (error) {
+        console.error("Error signing out: ", error);
     }
-    await signOut(auth);
-    setCurrentView('home');
   };
 
   const handleSelectBetslip = (betslip: Betslip) => {
@@ -352,7 +362,7 @@ const handleSetUserRole = async (uid: string, role: UserRole) => {
   }
 
   const pageTitles: { [key in View]: string } = {
-    home: 'Home',
+    home: 'MIKEKA PRO',
     betslips: 'Betslips',
     'my-betslips': 'My Betslips',
     subscribe: 'Subscriptions',
@@ -362,8 +372,9 @@ const handleSetUserRole = async (uid: string, role: UserRole) => {
     'bet-history': 'Bet History',
     'payment-history': 'Payment History',
     'profile-settings': 'Profile Settings',
+    'logout-confirm': 'Thibitisha Kutoka',
   };
-  const isDetailsOrAdmin = currentView === 'betslip-details' || currentView === 'admin' || currentView === 'bet-history' || currentView === 'payment-history' || currentView === 'profile-settings' || currentView === 'my-betslips';
+  const isDetailsOrAdmin = currentView === 'betslip-details' || currentView === 'admin' || currentView === 'bet-history' || currentView === 'payment-history' || currentView === 'profile-settings' || currentView === 'my-betslips' || currentView === 'logout-confirm';
   
   const goBack = () => {
     if (currentView === 'betslip-details') {
@@ -373,7 +384,8 @@ const handleSetUserRole = async (uid: string, role: UserRole) => {
       currentView === 'payment-history' ||
       currentView === 'profile-settings' ||
       currentView === 'my-betslips' ||
-      currentView === 'admin'
+      currentView === 'admin' ||
+      currentView === 'logout-confirm'
     ) {
       setCurrentView('account');
     } else {
@@ -402,7 +414,7 @@ const handleSetUserRole = async (uid: string, role: UserRole) => {
           {currentView === 'subscribe' && <SubscribePage allTipsters={tipsters} subscribedTipsterIds={subscribedTipsterIds} onToggleSubscription={handleToggleSubscription} />}
           {currentView === 'account' && <AccountPage 
               user={user} 
-              onLogout={handleLogout} 
+              onLogout={() => setCurrentView('logout-confirm')} 
               onNavigateToMyBetslips={() => setCurrentView('my-betslips')}
               onNavigateToAdmin={() => setCurrentView('admin')}
               onNavigateToBetHistory={() => setCurrentView('bet-history')}
@@ -420,6 +432,7 @@ const handleSetUserRole = async (uid: string, role: UserRole) => {
           {currentView === 'bet-history' && <BetHistoryPage allBetslips={betslips} purchasedBetslipIds={purchasedBetslipIds} onSelectBetslip={handleSelectBetslip} />}
           {currentView === 'payment-history' && <PaymentHistoryPage allBetslips={betslips} purchaseHistory={purchaseHistory} />}
           {currentView === 'profile-settings' && <ProfileSettingsPage user={user} userProfile={userProfile} onUpdateProfile={handleUpdateProfile} onChangePassword={handlePasswordReset} />}
+          {currentView === 'logout-confirm' && <LogoutConfirmationPage onConfirmLogout={handleConfirmLogout} onCancel={() => setCurrentView('account')} />}
 
       </div>
 

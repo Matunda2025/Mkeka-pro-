@@ -55,18 +55,8 @@ const BetslipCard: React.FC<BetslipCardProps> = ({ betslip, onView, isPurchased 
       <div className="flex justify-between items-start">
         <div>
           <p className="text-5xl font-extrabold tracking-tighter">{betslip.odds.toFixed(2)}</p>
-          <p className="text-gray-400 text-sm">Odds</p>
-        </div>
-        <span className={`text-white text-xs font-semibold px-3 py-1 rounded-full capitalize ${isPurchased ? 'bg-purple-600' : 'bg-[#1f844a]'}`}>
-            {isPurchased ? 'Purchased' : betslip.status}
-        </span>
-      </div>
-
-      {/* Details and Price */}
-      <div className="flex justify-between items-end">
-        <div>
-          <p className="text-sm text-gray-400">Validity Time • <Countdown expiryTimestamp={betslip.expiresAt} /></p>
-          <div className="flex items-center space-x-2 mt-2">
+          <p className="text-gray-400 text-sm mb-2">Odds</p>
+          <div className="flex items-center space-x-2">
             {betslip.sponsors.map(sponsor => (
               <div key={sponsor.name} className={`h-6 flex items-center justify-center rounded px-2 text-white font-bold text-xs ${
                 sponsor.name === 'SportyBet' ? 'bg-red-600' :
@@ -82,6 +72,16 @@ const BetslipCard: React.FC<BetslipCardProps> = ({ betslip, onView, isPurchased 
               </div>
             ))}
           </div>
+        </div>
+        <span className={`text-white text-xs font-semibold px-3 py-1 rounded-full capitalize ${isPurchased ? 'bg-purple-600' : 'bg-[#1f844a]'}`}>
+            {isPurchased ? 'Purchased' : betslip.status}
+        </span>
+      </div>
+
+      {/* Details and Price */}
+      <div className="flex justify-between items-end">
+        <div>
+          <p className="text-sm text-gray-400">Validity Time • <Countdown expiryTimestamp={betslip.expiresAt} /></p>
         </div>
         <p className="text-2xl font-bold">{betslip.price}</p>
       </div>
